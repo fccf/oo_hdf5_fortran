@@ -8,9 +8,7 @@ Abstracts away the messy parts of HDF5 so that you can read/write various types/
 Polymorphic API with read/write integer / real32/64:
 
 * scalar
-* 1-D
-* 2-D
-* 3-D
+* 1-D .. 6-D
 
 as well as character (string) variables and attributes.
 If you'd like higher-rank arrays, let us know via GitHub Issue.

@@ -18,7 +18,7 @@ module hdf5_interface
                       glid, &   !< group location identifier
                       sid, did, pid
     integer :: comp_lvl = 0 !< compression level (1-9)  0: disable compression
-    integer(HSIZE_T) :: chunk_size(3) = [64,64,1]  !< chunk size per dimension
+    integer(HSIZE_T) :: chunk_size(6) = [64,64,1,1,1,1]  !< chunk size per dimension
     logical :: verbose=.false.
 
 
@@ -32,6 +32,7 @@ module hdf5_interface
     !> add group or dataset integer/real 0-3d
     generic   :: add => hdf_add_group, hdf_add_int, hdf_add_int1d, hdf_add_int2d, hdf_add_int3d, &
                         hdf_add_real32, hdf_add_real32_1d, hdf_add_real32_2d, hdf_add_real32_3d, &
+                        hdf_add_real32_4d, hdf_add_real32_5d,  hdf_add_real32_6d, &
                !         hdf_add_real64, hdf_add_real64_1d, hdf_add_real64_2d, hdf_add_real64_3d, &
                         hdf_add_string
 
@@ -46,6 +47,7 @@ module hdf5_interface
       hdf_add_int, hdf_add_int1d, hdf_add_int2d, hdf_add_int3d, &
       hdf_get_int, hdf_get_int1d, hdf_get_int2d, hdf_get_int3d, &
       hdf_add_real32, hdf_add_real32_1d, hdf_add_real32_2d, hdf_add_real32_3d, &
+      hdf_add_real32_4d, hdf_add_real32_5d,  hdf_add_real32_6d, &
       hdf_get_real,  hdf_get_real1d, hdf_get_real2d, hdf_get_real3d, &
       hdf_add_string, hdf_get_string
       
@@ -53,7 +55,7 @@ module hdf5_interface
 
 contains
 !=============================================================================
-subroutine hdf_initialize(self,filename,status,action,comp_lvl,chunk_size)
+subroutine hdf_initialize(self,filename,status,action,comp_lvl)
   !< Opens hdf5 file
 
   class(hdf5_file), intent(inout)    :: self
@@ -61,7 +63,6 @@ subroutine hdf_initialize(self,filename,status,action,comp_lvl,chunk_size)
   character(*), intent(in), optional :: status
   character(*), intent(in), optional :: action
   integer, intent(in), optional      :: comp_lvl
-  integer, intent(in), optional      :: chunk_size(3)
 
   character(:), allocatable :: lstatus, laction
   integer :: ierr
@@ -69,7 +70,6 @@ subroutine hdf_initialize(self,filename,status,action,comp_lvl,chunk_size)
   self%filename = filename
   
   if (present(comp_lvl)) self%comp_lvl = comp_lvl
-  if (present(chunk_size)) self%chunk_size = chunk_size
 
   !> Initialize FORTRAN interface.
   call h5open_f(ierr)
@@ -212,15 +212,18 @@ subroutine hdf_set_deflate(self, dims)
 end subroutine hdf_set_deflate
 
 
-subroutine hdf_setup_write(self, dname, dtype, dims)
+subroutine hdf_setup_write(self, dname, dtype, dims, chunk_size)
   class(hdf5_file), intent(inout) :: self
   character(*), intent(in) :: dname
   integer(HID_T), intent(in) :: dtype
   integer(HSIZE_T), intent(in) :: dims(:)
+  integer, intent(in), optional :: chunk_size(:)
   
   integer :: ierr
   
   call self%add(dname)
+  
+  if (present(chunk_size)) self%chunk_size(:size(dims)) = chunk_size
   
   call hdf_set_deflate(self, dims)
 
@@ -320,20 +323,20 @@ subroutine hdf_add_int1d(self,dname,value)
 end subroutine hdf_add_int1d
 
 
-subroutine hdf_add_int2d(self,dname,value)
+subroutine hdf_add_int2d(self,dname,value, chunk_size)
   class(hdf5_file), intent(inout) :: self
   character(*), intent(in) :: dname
   integer, intent(in)      :: value(:,:)
+  integer, intent(in), optional :: chunk_size(:)
 
   integer         :: ierr
   integer(HID_T)  :: dtype
   integer(HSIZE_T) :: dims(rank(value))
 
-
   dims = shape(value)
   dtype = h5kind_to_type(kind(value),H5_INTEGER_KIND)
 
-  call hdf_setup_write(self,dname,dtype,dims)
+  call hdf_setup_write(self,dname,dtype,dims, chunk_size)
     
   call h5dwrite_f(self%did, dtype, value, dims, ierr)
   if (ierr /= 0) error stop 'error on dataset '//dname//' write '//self%filename
@@ -343,10 +346,11 @@ subroutine hdf_add_int2d(self,dname,value)
 end subroutine hdf_add_int2d
 
 
-subroutine hdf_add_int3d(self,dname,value)
+subroutine hdf_add_int3d(self,dname,value, chunk_size)
   class(hdf5_file), intent(inout) :: self
   character(*), intent(in) :: dname
   integer, intent(in)      :: value(:,:,:)
+  integer, intent(in), optional :: chunk_size(:)
 
   integer         :: ierr
   integer(HID_T)  :: dtype
@@ -356,7 +360,7 @@ subroutine hdf_add_int3d(self,dname,value)
   dims = shape(value)
   dtype = h5kind_to_type(kind(value),H5_INTEGER_KIND)
 
-  call hdf_setup_write(self,dname,dtype,dims)
+  call hdf_setup_write(self,dname,dtype,dims, chunk_size)
     
   call h5dwrite_f(self%did, dtype, value, dims, ierr)
   if (ierr /= 0) error stop 'error on dataset '//dname//' write '//self%filename
@@ -418,10 +422,11 @@ subroutine hdf_add_real32_1d(self,dname,value)
 end subroutine hdf_add_real32_1d
 
 
-subroutine hdf_add_real32_2d(self,dname,value)
+subroutine hdf_add_real32_2d(self,dname,value, chunk_size)
   class(hdf5_file), intent(inout) :: self
   character(*), intent(in) :: dname
   real, intent(in)      :: value(:,:)
+  integer, intent(in), optional :: chunk_size(:)
 
   integer         :: ierr
   integer(HID_T)  :: dtype
@@ -431,7 +436,7 @@ subroutine hdf_add_real32_2d(self,dname,value)
   dims = shape(value)
   dtype = h5kind_to_type(kind(value),H5_REAL_KIND)
 
-  call hdf_setup_write(self,dname,dtype,dims)
+  call hdf_setup_write(self,dname,dtype,dims, chunk_size)
   
   call h5dwrite_f(self%did, dtype, value, dims, ierr)
   if (ierr /= 0) error stop 'error on dataset '//dname//' write '//self%filename
@@ -441,10 +446,11 @@ subroutine hdf_add_real32_2d(self,dname,value)
 end subroutine hdf_add_real32_2d
 
 
-subroutine hdf_add_real32_3d(self,dname,value)
+subroutine hdf_add_real32_3d(self,dname,value, chunk_size)
   class(hdf5_file), intent(inout) :: self
   character(*), intent(in) :: dname
   real, intent(in)      :: value(:,:,:)
+  integer, intent(in), optional :: chunk_size(:)
 
   integer         :: ierr
   integer(HID_T)  :: dtype
@@ -454,7 +460,7 @@ subroutine hdf_add_real32_3d(self,dname,value)
   dims = shape(value)
   dtype = h5kind_to_type(kind(value),H5_REAL_KIND)
 
-  call hdf_setup_write(self,dname,dtype,dims)
+  call hdf_setup_write(self,dname,dtype,dims, chunk_size)
     
   call h5dwrite_f(self%did, dtype, value, dims, ierr)
   if (ierr /= 0) error stop 'error on dataset '//dname//' write '//self%filename
@@ -462,6 +468,78 @@ subroutine hdf_add_real32_3d(self,dname,value)
   call hdf_wrapup(self)
   
 end subroutine hdf_add_real32_3d
+
+
+subroutine hdf_add_real32_4d(self,dname,value, chunk_size)
+  class(hdf5_file), intent(inout) :: self
+  character(*), intent(in) :: dname
+  real, intent(in)      :: value(:,:,:,:)
+  integer, intent(in), optional :: chunk_size(:)
+  
+  integer         :: ierr
+  integer(HID_T)  :: dtype
+  integer(HSIZE_T) :: dims(rank(value))
+
+
+  dims = shape(value)
+  dtype = h5kind_to_type(kind(value),H5_REAL_KIND)
+
+  call hdf_setup_write(self,dname,dtype,dims, chunk_size)
+    
+  call h5dwrite_f(self%did, dtype, value, dims, ierr)
+  if (ierr /= 0) error stop 'error on dataset '//dname//' write '//self%filename
+  
+  call hdf_wrapup(self)
+  
+end subroutine hdf_add_real32_4d
+
+
+subroutine hdf_add_real32_5d(self,dname,value, chunk_size)
+  class(hdf5_file), intent(inout) :: self
+  character(*), intent(in) :: dname
+  real, intent(in)      :: value(:,:,:,:,:)
+  integer, intent(in), optional :: chunk_size(:)
+  
+  integer         :: ierr
+  integer(HID_T)  :: dtype
+  integer(HSIZE_T) :: dims(rank(value))
+
+
+  dims = shape(value)
+  dtype = h5kind_to_type(kind(value),H5_REAL_KIND)
+
+  call hdf_setup_write(self,dname,dtype,dims, chunk_size)
+    
+  call h5dwrite_f(self%did, dtype, value, dims, ierr)
+  if (ierr /= 0) error stop 'error on dataset '//dname//' write '//self%filename
+  
+  call hdf_wrapup(self)
+  
+end subroutine hdf_add_real32_5d
+
+
+subroutine hdf_add_real32_6d(self,dname,value, chunk_size)
+  class(hdf5_file), intent(inout) :: self
+  character(*), intent(in) :: dname
+  real, intent(in)      :: value(:,:,:,:,:,:)
+  integer, intent(in), optional :: chunk_size(:)
+  
+  integer         :: ierr
+  integer(HID_T)  :: dtype
+  integer(HSIZE_T) :: dims(rank(value))
+
+
+  dims = shape(value)
+  dtype = h5kind_to_type(kind(value),H5_REAL_KIND)
+
+  call hdf_setup_write(self,dname,dtype,dims, chunk_size)
+    
+  call h5dwrite_f(self%did, dtype, value, dims, ierr)
+  if (ierr /= 0) error stop 'error on dataset '//dname//' write '//self%filename
+  
+  call hdf_wrapup(self)
+  
+end subroutine hdf_add_real32_6d
 
 
 subroutine hdf_add_string(self,dname, value)

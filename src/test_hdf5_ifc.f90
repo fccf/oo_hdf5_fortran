@@ -135,9 +135,9 @@ subroutine test_hdf5_deflate()
   real :: big2(N,N) = 0., big3(N,N,4) = 0.
 
 
-  call h5f%initialize('test_deflate'//cs//'.h5',status='new',action='rw',comp_lvl=1,chunk_size=[100,100,1])
+  call h5f%initialize('test_deflate'//cs//'.h5',status='new',action='rw',comp_lvl=1)
 
-  call h5f%add('/big2', big2)
+  call h5f%add('/big2', big2, chunk_size=[100,100])
   
   call h5f%finalize()
   
@@ -149,9 +149,9 @@ subroutine test_hdf5_deflate()
   if (h5f%comp_lvl > 0 .and. crat < 10) print *,'warning: 2D low compression' 
   
 !======================================
-  call h5f%initialize('test_deflate'//cs//'.h5',status='new',action='rw',comp_lvl=1,chunk_size=[100,100,1])
+  call h5f%initialize('test_deflate'//cs//'.h5',status='new',action='rw',comp_lvl=1)
 
-  call h5f%add('/big3', big3)
+  call h5f%add('/big3', big3, chunk_size=[100,100,1])
   
   call h5f%finalize()
   
@@ -162,9 +162,9 @@ subroutine test_hdf5_deflate()
   
   if (h5f%comp_lvl > 0 .and. crat < 10) print *,'warning: 3D low compression' 
 !======================================
-  call h5f%initialize('test_deflate'//cs//'.h5',status='new',action='rw',comp_lvl=1,chunk_size=[100,100,1])
+  call h5f%initialize('test_deflate'//cs//'.h5',status='new',action='rw',comp_lvl=1)
 
-  call h5f%add('/ibig3', ibig3)
+  call h5f%add('/ibig3', ibig3, chunk_size=[1000,100,1])
   
   call h5f%finalize()
   
@@ -175,9 +175,9 @@ subroutine test_hdf5_deflate()
   
   if (h5f%comp_lvl > 0 .and. crat < 10) print *,'warning: 3D low compression' 
 !======================================
-  call h5f%initialize('test_deflate'//cs//'.h5',status='new',action='rw',comp_lvl=1,chunk_size=[100,100,1])
+  call h5f%initialize('test_deflate'//cs//'.h5',status='new',action='rw',comp_lvl=1)
 
-  call h5f%add('/ibig2', ibig2)
+  call h5f%add('/ibig2', ibig2, chunk_size=[100,100])
   
   call h5f%finalize()
   
