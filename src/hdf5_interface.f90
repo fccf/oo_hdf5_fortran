@@ -738,16 +738,17 @@ end subroutine hdf_add_string
 !====== READ =====================================
 
 subroutine hdf_get_string(self,dname, value)
+! FIXME need to use another function to read length, as simply reads gibberish after actual data
+ ! till buffer is full
 
   class(hdf5_file), intent(in)     :: self
   character(*), intent(in)         :: dname
-  character(*), intent(out)        :: value
+  character(*), intent(out) :: value
   
   integer :: ierr
 
   call h5ltread_dataset_string_f(self%lid, dname, value, ierr)
   if (ierr /= 0) error stop 'error on dataset '//dname//' read '//self%filename
-
 
 end subroutine hdf_get_string
 

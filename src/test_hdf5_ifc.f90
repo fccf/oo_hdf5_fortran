@@ -206,7 +206,6 @@ subroutine test_string_rw()
     call h5f%add('/little','42')
     
     call h5f%get('/little',value)
-
     
     if (.not.value=='42') error stop 'string dataset read/write verification failure'
 
