@@ -41,7 +41,7 @@ make
 make test
 ```
 
-The libraries `libh5oo32` (32-bit real) and `libh5oo64` (64-bit real) are built, link them into your program as usual.
+The library `libh5oo` is built, link it into your program as usual.
 
 ## Usage
 
