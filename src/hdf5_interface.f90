@@ -1,7 +1,7 @@
 !> hdf5_interface
 module hdf5_interface
 
-  use, intrinsic:: iso_fortran_env, only: real32, real64
+  use, intrinsic:: iso_fortran_env, only: real32, real64, stderr=>error_unit
   use H5LT
 
   implicit none
@@ -24,7 +24,7 @@ module hdf5_interface
 
   contains
     !> initialize HDF5 file
-    procedure :: initialize => hdf_initialize, finalize => hdf_finalize
+    procedure :: initialize => hdf_initialize, finalize => hdf_finalize, writeattr
 
     !> open and close hdf5 group
     procedure :: open => hdf_open_group, close => hdf_close_group
@@ -243,12 +243,34 @@ subroutine hdf_wrapup(self)
   if (ierr /= 0) error stop 'error on closing dataset '//self%filename
 
 end subroutine hdf_wrapup
+
+
+subroutine writeattr(self,dname,attr,attrval)
+  class(hdf5_file), intent(in) :: self
+  character(*), intent(in) :: dname, attr, attrval
+  
+  integer :: ierr
+  logical :: exists
+  
+  call self%add(dname) 
+  
+  call h5ltpath_valid_f(self%lid, dname, .true., exists, ierr)
+  if (ierr /= 0) error stop 'problem checking existence: '//dname//' file '//self%filename
+  
+  if (.not.exists) then
+    write(stderr,*) 'WARNING: variable '//dname//' must be created before writing '//attr
+    return
+  endif
+
+  call h5ltset_attribute_string_f(self%lid, dname, attr, attrval, ierr)
+  if (ierr /= 0) error stop 'problem writing attribute '//attr//' to '//dname//' file '//self%filename
+
+end subroutine writeattr
 !===================================
-subroutine hdf_add_int(self,dname,value,attr,attrval)
+subroutine hdf_add_int(self,dname,value)
   class(hdf5_file), intent(in) :: self
   character(*), intent(in) :: dname
   integer, intent(in)      :: value
-  character(*), intent(in), optional :: attr, attrval
 
   integer(HID_T) :: sid,did
   integer         :: ierr
@@ -275,21 +297,17 @@ subroutine hdf_add_int(self,dname,value,attr,attrval)
 
   !> close space and dataset
   call h5dclose_f(did, ierr)
+  if (ierr /= 0) error stop 'error close dataset '//dname//' write '//self%filename
   call h5sclose_f(sid, ierr)
   if (ierr /= 0) error stop 'error close dataspace '//dname//' write '//self%filename
-  
-  
-  if (present(attr)) call h5ltset_attribute_string_f(self%lid, dname, attr, attrval, ierr)
-  if (ierr /= 0) error stop 'problem writing attribute '//attr//' to '//dname//' file '//self%filename
   
 end subroutine hdf_add_int
 
 
-subroutine hdf_add_int1d(self,dname,value,attr,attrval)
+subroutine hdf_add_int1d(self,dname,value)
   class(hdf5_file), intent(in) :: self
   character(*), intent(in) :: dname
   integer, intent(in)      :: value(:)
-  character(*), intent(in), optional :: attr, attrval
 
   integer         :: ierr
 
@@ -299,17 +317,13 @@ subroutine hdf_add_int1d(self,dname,value,attr,attrval)
     rank(value), int(shape(value),HSIZE_T), h5kind_to_type(kind(value),H5_INTEGER_KIND), value, ierr)
   if (ierr /= 0) error stop 'error on dataset '//dname//' write '//self%filename
   
-  if (present(attr)) call h5ltset_attribute_string_f(self%lid, dname, attr, attrval, ierr)
-  if (ierr /= 0) error stop 'problem writing attribute '//attr//' to '//dname//' file '//self%filename
-
 end subroutine hdf_add_int1d
 
 
-subroutine hdf_add_int2d(self,dname,value,attr,attrval)
+subroutine hdf_add_int2d(self,dname,value)
   class(hdf5_file), intent(inout) :: self
   character(*), intent(in) :: dname
   integer, intent(in)      :: value(:,:)
-  character(*), intent(in), optional :: attr, attrval
 
   integer         :: ierr
   integer(HID_T)  :: dtype
@@ -326,17 +340,13 @@ subroutine hdf_add_int2d(self,dname,value,attr,attrval)
   
   call hdf_wrapup(self)
   
-  if (present(attr)) call h5ltset_attribute_string_f(self%lid, dname, attr, attrval, ierr)
-  if (ierr /= 0) error stop 'problem writing attribute '//attr//' to '//dname//' file '//self%filename
-
 end subroutine hdf_add_int2d
 
 
-subroutine hdf_add_int3d(self,dname,value,attr,attrval)
+subroutine hdf_add_int3d(self,dname,value)
   class(hdf5_file), intent(inout) :: self
   character(*), intent(in) :: dname
   integer, intent(in)      :: value(:,:,:)
-  character(*), intent(in), optional :: attr, attrval
 
   integer         :: ierr
   integer(HID_T)  :: dtype
@@ -353,17 +363,13 @@ subroutine hdf_add_int3d(self,dname,value,attr,attrval)
   
   call hdf_wrapup(self)
   
-  if (present(attr)) call h5ltset_attribute_string_f(self%lid, dname, attr, attrval, ierr)
-  if (ierr /= 0) error stop 'problem writing attribute '//attr//' to '//dname//' file '//self%filename
-
 end subroutine hdf_add_int3d
 
 
-subroutine hdf_add_real32(self,dname,value,attr,attrval)
+subroutine hdf_add_real32(self,dname,value)
   class(hdf5_file), intent(in) :: self
   character(*), intent(in) :: dname
   real, intent(in)      :: value
-  character(*), intent(in), optional :: attr, attrval
 
   integer(HID_T) :: sid,did
   integer         :: ierr
@@ -392,19 +398,14 @@ subroutine hdf_add_real32(self,dname,value,attr,attrval)
   call h5dclose_f(did, ierr)
   call h5sclose_f(sid, ierr)
   if (ierr /= 0) error stop 'error close dataspace '//dname//' write '//self%filename
-  
-  if (present(attr)) call h5ltset_attribute_string_f(self%lid, dname, attr, attrval, ierr)
-  if (ierr /= 0) error stop 'problem writing attribute '//attr//' to '//dname//' file '//self%filename
-
 
 end subroutine hdf_add_real32
 
 
-subroutine hdf_add_real32_1d(self,dname,value,attr,attrval)
+subroutine hdf_add_real32_1d(self,dname,value)
   class(hdf5_file), intent(in) :: self
   character(*), intent(in) :: dname
   real, intent(in)      :: value(:)
-  character(*), intent(in), optional :: attr, attrval
 
   integer         :: ierr
 
@@ -414,17 +415,13 @@ subroutine hdf_add_real32_1d(self,dname,value,attr,attrval)
     rank(value), int(shape(value),HSIZE_T), h5kind_to_type(kind(value),H5_REAL_KIND), value, ierr)
   if (ierr /= 0) error stop 'error on dataset '//dname//' write '//self%filename
   
-  if (present(attr)) call h5ltset_attribute_string_f(self%lid, dname, attr, attrval, ierr)
-  if (ierr /= 0) error stop 'problem writing attribute '//attr//' to '//dname//' file '//self%filename
-
 end subroutine hdf_add_real32_1d
 
 
-subroutine hdf_add_real32_2d(self,dname,value,attr,attrval)
+subroutine hdf_add_real32_2d(self,dname,value)
   class(hdf5_file), intent(inout) :: self
   character(*), intent(in) :: dname
   real, intent(in)      :: value(:,:)
-  character(*), intent(in), optional :: attr, attrval
 
   integer         :: ierr
   integer(HID_T)  :: dtype
@@ -440,19 +437,14 @@ subroutine hdf_add_real32_2d(self,dname,value,attr,attrval)
   if (ierr /= 0) error stop 'error on dataset '//dname//' write '//self%filename
   
   call hdf_wrapup(self)
-  
-  if (present(attr)) call h5ltset_attribute_string_f(self%lid, dname, attr, attrval, ierr)
-  if (ierr /= 0) error stop 'problem writing attribute '//attr//' to '//dname//' file '//self%filename
- 
 
 end subroutine hdf_add_real32_2d
 
 
-subroutine hdf_add_real32_3d(self,dname,value,attr,attrval)
+subroutine hdf_add_real32_3d(self,dname,value)
   class(hdf5_file), intent(inout) :: self
   character(*), intent(in) :: dname
   real, intent(in)      :: value(:,:,:)
-  character(*), intent(in), optional :: attr, attrval
 
   integer         :: ierr
   integer(HID_T)  :: dtype
@@ -468,9 +460,6 @@ subroutine hdf_add_real32_3d(self,dname,value,attr,attrval)
   if (ierr /= 0) error stop 'error on dataset '//dname//' write '//self%filename
   
   call hdf_wrapup(self)
-  
-  if (present(attr)) call h5ltset_attribute_string_f(self%lid, dname, attr, attrval, ierr)
-  if (ierr /= 0) error stop 'problem writing attribute '//attr//' to '//dname//' file '//self%filename
   
 end subroutine hdf_add_real32_3d
 

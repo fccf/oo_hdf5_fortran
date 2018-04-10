@@ -196,7 +196,7 @@ subroutine test_write_attributes()
 
     call h5f%initialize('test_deflate'//cs//'.h5')
 
-    call h5f%add('/little',42,'note','this is just a little number')
+    call h5f%writeattr('/little/','note','this is just a little number')
 
     call h5f%finalize()
 
