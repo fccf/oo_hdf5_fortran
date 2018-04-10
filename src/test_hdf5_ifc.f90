@@ -80,7 +80,7 @@ contains
     if (.not.all(i1==i1t)) error stop 'integer: read does not match write'
     
     
-    print *,trim(h5f%filename)
+    print *, h5f%filename
     
     if (.not. h5f%filename == 'test_'//cs//'.h5') error stop h5f%filename//' mismatch filename'
     

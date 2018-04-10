@@ -1,6 +1,7 @@
 !> hdf5_interface
 module hdf5_interface
 
+  use, intrinsic:: iso_fortran_env, only: real32, real64
   use H5LT
 
   implicit none
@@ -11,7 +12,7 @@ module hdf5_interface
 
   type :: hdf5_file
 
-    character(256)  :: filename  ! FIXME: character, allocatable gave only single (first) character with gfortran 7.2
+    character(:),allocatable  :: filename
     integer(HID_T) :: lid   !< location identifier
     integer(HID_T) :: gid    !< group identifier
     integer(HID_T) :: glid   !< group location identifier
@@ -28,8 +29,10 @@ module hdf5_interface
     procedure :: open => hdf_open_group, close => hdf_close_group
 
     !> add group or dataset integer/real 0-3d
-    generic   :: add => hdf_add_group, hdf_add_int, hdf_add_int1d, hdf_add_int2d, hdf_add_int3d, hdf_add_real, hdf_add_real1d,&
-                        hdf_add_real2d, hdf_add_real3d, hdf_add_string
+    generic   :: add => hdf_add_group, hdf_add_int, hdf_add_int1d, hdf_add_int2d, hdf_add_int3d, &
+                        hdf_add_real32, hdf_add_real32_1d, hdf_add_real32_2d, hdf_add_real32_3d, &
+               !         hdf_add_real64, hdf_add_real64_1d, hdf_add_real64_2d, hdf_add_real64_3d, &
+                        hdf_add_string
 
     !> get dataset integer/real 0-3d
     generic   :: get => hdf_get_int, hdf_get_int1d, hdf_get_int2d, hdf_get_int3d,&
@@ -38,9 +41,12 @@ module hdf5_interface
 
     
     !> private methods
-    procedure,private :: hdf_add_group, hdf_add_int, hdf_get_int,hdf_add_int1d, hdf_get_int1d, hdf_add_int2d, hdf_get_int2d, &
-      hdf_add_int3d, hdf_get_int3d, hdf_add_real, hdf_get_real, hdf_add_real1d, hdf_get_real1d, hdf_add_real2d, hdf_get_real2d, &
-      hdf_add_real3d, hdf_get_real3d, hdf_add_string, hdf_get_string
+    procedure,private :: hdf_add_group, &
+      hdf_add_int, hdf_add_int1d, hdf_add_int2d, hdf_add_int3d, &
+      hdf_get_int, hdf_get_int1d, hdf_get_int2d, hdf_get_int3d, &
+      hdf_add_real32, hdf_add_real32_1d, hdf_add_real32_2d, hdf_add_real32_3d, &
+      hdf_get_real,  hdf_get_real1d, hdf_get_real2d, hdf_get_real3d, &
+      hdf_add_string, hdf_get_string
       
   end type hdf5_file
 
@@ -349,7 +355,7 @@ subroutine hdf_add_int3d(self,dname,value,attr,attrval)
 
 end subroutine hdf_add_int3d
 !=============================================================================
-subroutine hdf_add_real(self,dname,value,attr,attrval)
+subroutine hdf_add_real32(self,dname,value,attr,attrval)
   class(hdf5_file), intent(in) :: self
   character(*), intent(in) :: dname
   real, intent(in)      :: value
@@ -387,9 +393,9 @@ subroutine hdf_add_real(self,dname,value,attr,attrval)
   if (ierr /= 0) error stop 'problem writing attribute '//attr//' to '//dname//' file '//self%filename
 
 
-end subroutine hdf_add_real
+end subroutine hdf_add_real32
 !=============================================================================
-subroutine hdf_add_real1d(self,dname,value,attr,attrval)
+subroutine hdf_add_real32_1d(self,dname,value,attr,attrval)
   class(hdf5_file), intent(in) :: self
   character(*), intent(in) :: dname
   real, intent(in)      :: value(:)
@@ -406,9 +412,9 @@ subroutine hdf_add_real1d(self,dname,value,attr,attrval)
   if (present(attr)) call h5ltset_attribute_string_f(self%lid, dname, attr, attrval, ierr)
   if (ierr /= 0) error stop 'problem writing attribute '//attr//' to '//dname//' file '//self%filename
 
-end subroutine hdf_add_real1d
+end subroutine hdf_add_real32_1d
 !=============================================================================
-subroutine hdf_add_real2d(self,dname,value,attr,attrval)
+subroutine hdf_add_real32_2d(self,dname,value,attr,attrval)
   class(hdf5_file), intent(in) :: self
   character(*), intent(in) :: dname
   real, intent(in)      :: value(:,:)
@@ -449,10 +455,10 @@ subroutine hdf_add_real2d(self,dname,value,attr,attrval)
   if (ierr /= 0) error stop 'problem writing attribute '//attr//' to '//dname//' file '//self%filename
  
 
-end subroutine hdf_add_real2d
+end subroutine hdf_add_real32_2d
 
 
-subroutine hdf_add_real3d(self,dname,value,attr,attrval)
+subroutine hdf_add_real32_3d(self,dname,value,attr,attrval)
   class(hdf5_file), intent(in) :: self
   character(*), intent(in) :: dname
   real, intent(in)      :: value(:,:,:)
@@ -493,7 +499,7 @@ subroutine hdf_add_real3d(self,dname,value,attr,attrval)
   if (present(attr)) call h5ltset_attribute_string_f(self%lid, dname, attr, attrval, ierr)
   if (ierr /= 0) error stop 'problem writing attribute '//attr//' to '//dname//' file '//self%filename
   
-end subroutine hdf_add_real3d
+end subroutine hdf_add_real32_3d
 
 
 subroutine hdf_add_string(self,dname, value)

@@ -21,29 +21,28 @@ find_package(HDF5 REQUIRED COMPONENTS Fortran Fortran_HL)
 include_directories(${HDF5_INCLUDE_DIRS} ${HDF5_Fortran_INCLUDE_DIRS})
 
 
-add_library(hdf5iface_32 hdf5_interface.f90)
-target_link_libraries(hdf5iface_32
-    ${HDF5_Fortran_LIBRARIES} ${HDF5_Fortran_HL_LIBRARIES})
-set_target_properties(hdf5iface_32 PROPERTIES Fortran_MODULE_DIRECTORY mod.real32)
+add_library(hdf5oo32 hdf5_interface.f90)
+target_link_libraries(hdf5oo32 ${HDF5_Fortran_LIBRARIES} ${HDF5_Fortran_HL_LIBRARIES})
+set_target_properties(hdf5oo32 PROPERTIES Fortran_MODULE_DIRECTORY mod.real32)
 
-add_library(hdf5iface_64 hdf5_interface.f90)
-target_compile_options(hdf5iface_64 PUBLIC ${F64})
-target_link_libraries(hdf5iface_64
-    ${HDF5_Fortran_LIBRARIES} ${HDF5_Fortran_HL_LIBRARIES})
-set_target_properties(hdf5iface_64 PROPERTIES Fortran_MODULE_DIRECTORY mod.real64)
+add_library(hdf5oo64 hdf5_interface.f90)
+target_compile_options(hdf5oo64 PUBLIC ${F64})
+target_link_libraries(hdf5oo64 ${HDF5_Fortran_LIBRARIES} ${HDF5_Fortran_HL_LIBRARIES})
+set_target_properties(hdf5oo64 PROPERTIES Fortran_MODULE_DIRECTORY mod.real64)
 
+# ========== test
 
-add_executable(test_hdf5_ifc_32 test_hdf5_ifc.f90)
-target_link_libraries(test_hdf5_ifc_32 hdf5iface_32)
-target_compile_options(test_hdf5_ifc_32 PRIVATE -Wno-compare-reals)
-set_target_properties(test_hdf5_ifc_32 PROPERTIES Fortran_MODULE_DIRECTORY mod.real32)
+add_executable(test32h5 test_hdf5_ifc.f90)
+target_link_libraries(test32h5 hdf5oo32)
+target_compile_options(test32h5 PRIVATE -Wno-compare-reals)
+set_target_properties(test32h5 PROPERTIES Fortran_MODULE_DIRECTORY mod.real32)
 
-add_executable(test_hdf5_ifc_64 test_hdf5_ifc.f90)
-target_link_libraries(test_hdf5_ifc_64 hdf5iface_64)
-target_compile_options(test_hdf5_ifc_64 PRIVATE -Wno-compare-reals)
-set_target_properties(test_hdf5_ifc_64 PROPERTIES Fortran_MODULE_DIRECTORY mod.real64)
+add_executable(test64h5 test_hdf5_ifc.f90)
+target_link_libraries(test64h5 hdf5oo64)
+target_compile_options(test64h5 PRIVATE -Wno-compare-reals)
+set_target_properties(test64h5 PROPERTIES Fortran_MODULE_DIRECTORY mod.real64)
 #---------------------------
 enable_testing()
-add_test(NAME h5iface_32 COMMAND test_hdf5_ifc_32)
+add_test(NAME h5iface_32 COMMAND test32h5)
 
-add_test(NAME h5iface_64 COMMAND test_hdf5_ifc_64)
+add_test(NAME h5iface_64 COMMAND test64h5)

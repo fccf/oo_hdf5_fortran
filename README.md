@@ -43,6 +43,8 @@ make
 make test
 ```
 
+The libraries `libh5oo32` (32-bit real) and `libh5oo64` (64-bit real) are built, link them into your program as usual.
+
 ## Usage
 
 All examples assume:
@@ -84,7 +86,7 @@ call h5f%finalize()
 
 real :: val2(1000,1000,3) = 0.
 
-call h5f%initialize('test.h5',status='old',action='rw', comp_lvl=1)
+call h5f%initialize('test.h5', comp_lvl=1)
 
 call h5f%add('/value2', val2)
 
