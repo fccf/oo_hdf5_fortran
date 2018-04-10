@@ -40,6 +40,7 @@ module hdf5_interface
     !> get dataset integer/real 0-3d
     generic   :: get => hdf_get_int, hdf_get_int1d, hdf_get_int2d, hdf_get_int3d,&
                         hdf_get_real32, hdf_get_real32_1d, hdf_get_real32_2d, hdf_get_real32_3d,&
+                        hdf_get_real64, hdf_get_real64_1d, hdf_get_real64_2d, hdf_get_real64_3d,&
                         hdf_get_string
 
     
@@ -51,7 +52,8 @@ module hdf5_interface
       hdf_add_real32_4d, hdf_add_real32_5d,  hdf_add_real32_6d, &
       hdf_add_real64, hdf_add_real64_1d, hdf_add_real64_2d, hdf_add_real64_3d, &
       hdf_add_real64_4d, hdf_add_real64_5d,  hdf_add_real64_6d, &
-      hdf_get_real32,  hdf_get_real32_1d, hdf_get_real32_2d, hdf_get_real32_3d, &
+      hdf_get_real32, hdf_get_real32_1d, hdf_get_real32_2d, hdf_get_real32_3d, &
+      hdf_get_real64, hdf_get_real64_1d, hdf_get_real64_2d, hdf_get_real64_3d, &
       hdf_add_string, hdf_get_string
       
   end type hdf5_file
@@ -852,7 +854,8 @@ subroutine hdf_get_real32(self, dname, value)
   call h5dclose_f(set_id, ierr)
 
 end subroutine hdf_get_real32
-!=============================================================================
+
+
 subroutine hdf_get_real32_1d(self, dname, value)
 
   class(hdf5_file), intent(in)     :: self
@@ -871,7 +874,8 @@ subroutine hdf_get_real32_1d(self, dname, value)
   if (ierr /= 0) error stop 'error read dataset '//dname//' read '//self%filename
   
 end subroutine hdf_get_real32_1d
-!=============================================================================
+
+
 subroutine hdf_get_real32_2d(self, dname, value)
 
   class(hdf5_file), intent(in)     :: self
@@ -890,7 +894,8 @@ subroutine hdf_get_real32_2d(self, dname, value)
   if (ierr /= 0) error stop 'error read dataset '//dname//' read '//self%filename
 
 end subroutine hdf_get_real32_2d
-!=============================================================================
+
+
 subroutine hdf_get_real32_3d(self, dname, value)
 
   class(hdf5_file), intent(in)     :: self
@@ -909,6 +914,88 @@ subroutine hdf_get_real32_3d(self, dname, value)
   if (ierr /= 0) error stop 'error read dataset '//dname//' read '//self%filename
 
 end subroutine hdf_get_real32_3d
+
+
+subroutine hdf_get_real64(self, dname, value)
+
+  class(hdf5_file), intent(in)  :: self
+  character(*), intent(in)      :: dname
+  real(real64), intent(out) :: value
+
+  integer(HID_T)  :: set_id
+  integer :: ierr
+
+  ! open dataset
+  call h5dopen_f(self%lid, dname, set_id, ierr)
+
+  ! read dataset
+  call h5dread_f(set_id, h5kind_to_type(kind(value),H5_REAL_KIND), value,int(shape(value),HSIZE_T), ierr)
+
+  ! close dataset
+  call h5dclose_f(set_id, ierr)
+
+end subroutine hdf_get_real64
+
+
+subroutine hdf_get_real64_1d(self, dname, value)
+
+  class(hdf5_file), intent(in)     :: self
+  character(*), intent(in)         :: dname
+  real(real64), intent(out),allocatable :: value(:)
+
+  integer(SIZE_T) :: dims(1),dsize
+  integer :: ierr, dtype
+
+  call h5ltget_dataset_info_f(self%lid, dname, dims, dtype, dsize, ierr)
+  if (ierr /= 0) error stop 'error open dataset '//dname//' read '//self%filename
+
+  allocate(value(dims(1)))
+
+  call h5ltread_dataset_f(self%lid, dname, h5kind_to_type(kind(value),H5_REAL_KIND), value, dims,  ierr)
+  if (ierr /= 0) error stop 'error read dataset '//dname//' read '//self%filename
+  
+end subroutine hdf_get_real64_1d
+
+
+subroutine hdf_get_real64_2d(self, dname, value)
+
+  class(hdf5_file), intent(in)     :: self
+  character(*), intent(in)         :: dname
+  real(real64), intent(out),allocatable :: value(:,:)
+
+  integer(SIZE_T) :: dims(2),dsize
+  integer :: ierr, dtype
+
+  call h5ltget_dataset_info_f(self%lid, dname, dims, dtype, dsize, ierr)
+  if (ierr /= 0) error stop 'error open dataset '//dname//' read '//self%filename
+
+  allocate(value(dims(1),dims(2)))
+
+  call h5ltread_dataset_f(self%lid, dname, h5kind_to_type(kind(value),H5_REAL_KIND), value, dims,  ierr)
+  if (ierr /= 0) error stop 'error read dataset '//dname//' read '//self%filename
+
+end subroutine hdf_get_real64_2d
+
+
+subroutine hdf_get_real64_3d(self, dname, value)
+
+  class(hdf5_file), intent(in)     :: self
+  character(*), intent(in)         :: dname
+  real(real64), intent(out),allocatable :: value(:,:,:)
+
+  integer(SIZE_T) :: dims(3),dsize
+  integer :: ierr, dtype
+
+  call h5ltget_dataset_info_f(self%lid, dname, dims, dtype, dsize, ierr)
+  if (ierr /= 0) error stop 'error open dataset '//dname//' read '//self%filename
+
+  allocate(value(dims(1),dims(2),dims(3)))
+
+  call h5ltread_dataset_f(self%lid, dname, h5kind_to_type(kind(value),H5_REAL_KIND), value, dims,  ierr)
+  if (ierr /= 0) error stop 'error read dataset '//dname//' read '//self%filename
+
+end subroutine hdf_get_real64_3d
+
 
 !----- Helper functions
 
