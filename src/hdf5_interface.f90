@@ -178,10 +178,10 @@ subroutine hdf_close_group(self)
 
 end subroutine hdf_close_group
 !=============================================================================
-subroutine hdf_set_deflate(self, dims, pid)
+integer(HID_T) function hdf_set_deflate(self, dims) result(pid)
   class(hdf5_file), intent(in) :: self
   integer(HSIZE_T), intent(in) :: dims(:)
-  integer(HID_T), intent(out) :: pid
+
 
   integer :: ierr, ndims, i
   integer(HSIZE_T), allocatable :: chunk_size(:)
@@ -208,7 +208,7 @@ subroutine hdf_set_deflate(self, dims, pid)
   call h5pset_deflate_f(pid, self%comp_lvl, ierr)
   if (ierr /= 0) error stop 'error enabling Deflate compression '//self%filename
 
-end subroutine hdf_set_deflate  
+end function hdf_set_deflate  
 !===================================
 subroutine hdf_add_int(self,dname,value,attr,attrval)
   class(hdf5_file), intent(in) :: self
@@ -290,7 +290,7 @@ subroutine hdf_add_int2d(self,dname,value,attr,attrval)
       call h5ltmake_dataset_f(self%lid, dname, rank(value), dims, dtype, value, ierr)
     if (ierr /= 0) error stop 'error on dataset '//dname//' write '//self%filename
   else
-    call hdf_set_deflate(self, dims, pid)
+    pid = hdf_set_deflate(self, dims)
 
     call h5screate_simple_f(rank(value), dims, sid, ierr)
     if (ierr /= 0) error stop 'error on dataspace '//dname//' '//self%filename
@@ -333,7 +333,7 @@ subroutine hdf_add_int3d(self,dname,value,attr,attrval)
       call h5ltmake_dataset_f(self%lid, dname, rank(value), dims, dtype, value, ierr)
     if (ierr /= 0) error stop 'error on dataset '//dname//' write '//self%filename
   else
-    call hdf_set_deflate(self, dims, pid)
+    pid = hdf_set_deflate(self, dims)
 
     call h5screate_simple_f(rank(value), dims, sid, ierr)
     if (ierr /= 0) error stop 'error on dataspace '//dname//' '//self%filename
@@ -434,7 +434,7 @@ subroutine hdf_add_real32_2d(self,dname,value,attr,attrval)
     call h5ltmake_dataset_f(self%lid, dname, rank(value), dims, dtype, value, ierr)
     if (ierr /= 0) error stop 'error on dataset '//dname//' write '//self%filename
   else
-    call hdf_set_deflate(self, dims, pid)
+    pid = hdf_set_deflate(self, dims)
 
     call h5screate_simple_f(rank(value), dims, sid, ierr)
     if (ierr /= 0) error stop 'error on dataspace '//dname//' '//self%filename
@@ -479,7 +479,7 @@ subroutine hdf_add_real32_3d(self,dname,value,attr,attrval)
       rank(value), int(shape(value),HSIZE_T), h5kind_to_type(kind(value),H5_REAL_KIND), value, ierr)
     if (ierr /= 0) error stop 'error on dataset '//dname//' write '//self%filename
   else
-    call hdf_set_deflate(self, dims, pid)
+    pid = hdf_set_deflate(self, dims)
 
     call h5screate_simple_f(rank(value), dims, sid, ierr)
     if (ierr /= 0) error stop 'error on dataspace '//dname//' '//self%filename
