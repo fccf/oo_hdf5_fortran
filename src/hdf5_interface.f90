@@ -13,9 +13,10 @@ module hdf5_interface
   type :: hdf5_file
 
     character(:),allocatable  :: filename
-    integer(HID_T) :: lid   !< location identifier
-    integer(HID_T) :: gid    !< group identifier
-    integer(HID_T) :: glid   !< group location identifier
+    integer(HID_T) :: lid, &   !< location identifier
+                      gid, &    !< group identifier
+                      glid, &   !< group location identifier
+                      sid, did, pid
     integer :: comp_lvl = 0 !< compression level (1-9)  0: disable compression
     integer(HSIZE_T) :: chunk_size(3) = [64,64,1]  !< chunk size per dimension
     logical :: verbose=.false.
@@ -178,8 +179,8 @@ subroutine hdf_close_group(self)
 
 end subroutine hdf_close_group
 !=============================================================================
-integer(HID_T) function hdf_set_deflate(self, dims) result(pid)
-  class(hdf5_file), intent(in) :: self
+subroutine hdf_set_deflate(self, dims)
+  class(hdf5_file), intent(inout) :: self
   integer(HSIZE_T), intent(in) :: dims(:)
 
 
@@ -196,19 +197,37 @@ integer(HID_T) function hdf_set_deflate(self, dims) result(pid)
   if (self%verbose) print *,'dims: ',dims,'chunk size: ',chunk_size
  
  
-  call h5pcreate_f(H5P_DATASET_CREATE_F, pid, ierr)
+  call h5pcreate_f(H5P_DATASET_CREATE_F, self%pid, ierr)
   if (ierr /= 0) error stop 'error creating property '//self%filename
   
-  call h5pset_chunk_f(pid, ndims, chunk_size, ierr)
+  call h5pset_chunk_f(self%pid, ndims, chunk_size, ierr)
   if (ierr /= 0) error stop 'error setting chunk '//self%filename
   
-  call h5pset_shuffle_f(pid, ierr)
+  call h5pset_shuffle_f(self%pid, ierr)
   if (ierr /= 0) error stop 'error enabling Shuffle '//self%filename
    
-  call h5pset_deflate_f(pid, self%comp_lvl, ierr)
+  call h5pset_deflate_f(self%pid, self%comp_lvl, ierr)
   if (ierr /= 0) error stop 'error enabling Deflate compression '//self%filename
 
-end function hdf_set_deflate  
+end subroutine hdf_set_deflate
+!===================================
+subroutine hdf_setup_write(self, dname, dtype, dims)
+  class(hdf5_file), intent(inout) :: self
+  character(*), intent(in) :: dname
+  integer(HID_T), intent(in) :: dtype
+  integer(HSIZE_T), intent(in) :: dims(:)
+  
+  integer :: ierr
+  
+  call hdf_set_deflate(self, dims)
+
+  call h5screate_simple_f(size(dims), dims, self%sid, ierr)
+  if (ierr /= 0) error stop 'error on dataspace '//dname//' '//self%filename
+  
+  call h5dcreate_f(self%lid, dname, dtype, self%sid, self%did, ierr, self%pid)
+  if (ierr /= 0) error stop 'error on dataset '//dname//' '//self%filename
+
+end subroutine hdf_setup_write
 !===================================
 subroutine hdf_add_int(self,dname,value,attr,attrval)
   class(hdf5_file), intent(in) :: self
@@ -270,13 +289,13 @@ subroutine hdf_add_int1d(self,dname,value,attr,attrval)
 end subroutine hdf_add_int1d
 !=============================================================================
 subroutine hdf_add_int2d(self,dname,value,attr,attrval)
-  class(hdf5_file), intent(in) :: self
+  class(hdf5_file), intent(inout) :: self
   character(*), intent(in) :: dname
   integer, intent(in)      :: value(:,:)
   character(*), intent(in), optional :: attr, attrval
 
   integer         :: ierr
-  integer(HID_T)  :: pid, sid, did, dtype
+  integer(HID_T)  :: dtype
   integer(HSIZE_T) :: dims(rank(value))
 
 
@@ -285,27 +304,15 @@ subroutine hdf_add_int2d(self,dname,value,attr,attrval)
 
   call self%add(dname)
 
+  call hdf_setup_write(self,dname,dtype,dims)
+    
+  call h5dwrite_f(self%did, dtype, value, dims, ierr)
+  if (ierr /= 0) error stop 'error on dataset '//dname//' write '//self%filename
   
-  if (self%comp_lvl < 1) then
-      call h5ltmake_dataset_f(self%lid, dname, rank(value), dims, dtype, value, ierr)
-    if (ierr /= 0) error stop 'error on dataset '//dname//' write '//self%filename
-  else
-    pid = hdf_set_deflate(self, dims)
-
-    call h5screate_simple_f(rank(value), dims, sid, ierr)
-    if (ierr /= 0) error stop 'error on dataspace '//dname//' '//self%filename
-    
-    call h5dcreate_f(self%lid, dname, dtype, sid, did, ierr, pid)
-    if (ierr /= 0) error stop 'error on dataset '//dname//' '//self%filename
-    
-    call h5dwrite_f(did, dtype, value, dims, ierr)
-    if (ierr /= 0) error stop 'error on dataset '//dname//' write '//self%filename
-    
-    call h5sclose_f(sid, ierr)
-    call h5pclose_f(pid, ierr)
-    call h5dclose_f(did, ierr)
-    if (ierr /= 0) error stop 'error on closing dataset '//dname//' write '//self%filename
-  endif
+  call h5sclose_f(self%sid, ierr)
+  call h5pclose_f(self%pid, ierr)
+  call h5dclose_f(self%did, ierr)
+  if (ierr /= 0) error stop 'error on closing dataset '//dname//' write '//self%filename
   
   if (present(attr)) call h5ltset_attribute_string_f(self%lid, dname, attr, attrval, ierr)
   if (ierr /= 0) error stop 'problem writing attribute '//attr//' to '//dname//' file '//self%filename
@@ -313,13 +320,13 @@ subroutine hdf_add_int2d(self,dname,value,attr,attrval)
 end subroutine hdf_add_int2d
 !=============================================================================
 subroutine hdf_add_int3d(self,dname,value,attr,attrval)
-  class(hdf5_file), intent(in) :: self
+  class(hdf5_file), intent(inout) :: self
   character(*), intent(in) :: dname
   integer, intent(in)      :: value(:,:,:)
   character(*), intent(in), optional :: attr, attrval
 
   integer         :: ierr
-  integer(HID_T)  :: pid, sid, did, dtype
+  integer(HID_T)  :: dtype
   integer(HSIZE_T) :: dims(rank(value))
 
 
@@ -328,27 +335,16 @@ subroutine hdf_add_int3d(self,dname,value,attr,attrval)
 
   call self%add(dname)
 
+  call hdf_setup_write(self,dname,dtype,dims)
+    
+  call h5dwrite_f(self%did, dtype, value, dims, ierr)
+  if (ierr /= 0) error stop 'error on dataset '//dname//' write '//self%filename
   
-  if (self%comp_lvl < 1) then
-      call h5ltmake_dataset_f(self%lid, dname, rank(value), dims, dtype, value, ierr)
-    if (ierr /= 0) error stop 'error on dataset '//dname//' write '//self%filename
-  else
-    pid = hdf_set_deflate(self, dims)
+  call h5sclose_f(self%sid, ierr)
+  call h5pclose_f(self%pid, ierr)
+  call h5dclose_f(self%did, ierr)
+  if (ierr /= 0) error stop 'error on closing dataset '//dname//' write '//self%filename
 
-    call h5screate_simple_f(rank(value), dims, sid, ierr)
-    if (ierr /= 0) error stop 'error on dataspace '//dname//' '//self%filename
-    
-    call h5dcreate_f(self%lid, dname, dtype, sid, did, ierr, pid)
-    if (ierr /= 0) error stop 'error on dataset '//dname//' '//self%filename
-    
-    call h5dwrite_f(did, dtype, value, dims, ierr)
-    if (ierr /= 0) error stop 'error on dataset '//dname//' write '//self%filename
-    
-    call h5sclose_f(sid, ierr)
-    call h5pclose_f(pid, ierr)
-    call h5dclose_f(did, ierr)
-    if (ierr /= 0) error stop 'error on closing dataset '//dname//' write '//self%filename
-  endif
   
   if (present(attr)) call h5ltset_attribute_string_f(self%lid, dname, attr, attrval, ierr)
   if (ierr /= 0) error stop 'problem writing attribute '//attr//' to '//dname//' file '//self%filename
@@ -415,13 +411,13 @@ subroutine hdf_add_real32_1d(self,dname,value,attr,attrval)
 end subroutine hdf_add_real32_1d
 !=============================================================================
 subroutine hdf_add_real32_2d(self,dname,value,attr,attrval)
-  class(hdf5_file), intent(in) :: self
+  class(hdf5_file), intent(inout) :: self
   character(*), intent(in) :: dname
   real, intent(in)      :: value(:,:)
   character(*), intent(in), optional :: attr, attrval
 
   integer         :: ierr
-  integer(HID_T)  :: pid, sid, did, dtype
+  integer(HID_T)  :: dtype
   integer(HSIZE_T) :: dims(rank(value))
 
 
@@ -430,26 +426,16 @@ subroutine hdf_add_real32_2d(self,dname,value,attr,attrval)
 
   call self%add(dname)
 
-  if (self%comp_lvl < 1) then
-    call h5ltmake_dataset_f(self%lid, dname, rank(value), dims, dtype, value, ierr)
-    if (ierr /= 0) error stop 'error on dataset '//dname//' write '//self%filename
-  else
-    pid = hdf_set_deflate(self, dims)
+  call hdf_setup_write(self,dname,dtype,dims)
+  
+  call h5dwrite_f(self%did, dtype, value, dims, ierr)
+  if (ierr /= 0) error stop 'error on dataset '//dname//' write '//self%filename
+  
+  call h5sclose_f(self%sid, ierr)
+  call h5pclose_f(self%pid, ierr)
+  call h5dclose_f(self%did, ierr)
+  if (ierr /= 0) error stop 'error on closing dataset '//dname//' write '//self%filename
 
-    call h5screate_simple_f(rank(value), dims, sid, ierr)
-    if (ierr /= 0) error stop 'error on dataspace '//dname//' '//self%filename
-    
-    call h5dcreate_f(self%lid, dname, dtype, sid, did, ierr, pid)
-    if (ierr /= 0) error stop 'error on dataset '//dname//' '//self%filename
-    
-    call h5dwrite_f(did, dtype, value, dims, ierr)
-    if (ierr /= 0) error stop 'error on dataset '//dname//' write '//self%filename
-    
-    call h5sclose_f(sid, ierr)
-    call h5pclose_f(pid, ierr)
-    call h5dclose_f(did, ierr)
-    if (ierr /= 0) error stop 'error on closing dataset '//dname//' write '//self%filename
-  endif
   
   if (present(attr)) call h5ltset_attribute_string_f(self%lid, dname, attr, attrval, ierr)
   if (ierr /= 0) error stop 'problem writing attribute '//attr//' to '//dname//' file '//self%filename
@@ -459,13 +445,13 @@ end subroutine hdf_add_real32_2d
 
 
 subroutine hdf_add_real32_3d(self,dname,value,attr,attrval)
-  class(hdf5_file), intent(in) :: self
+  class(hdf5_file), intent(inout) :: self
   character(*), intent(in) :: dname
   real, intent(in)      :: value(:,:,:)
   character(*), intent(in), optional :: attr, attrval
 
   integer         :: ierr
-  integer(HID_T)  :: pid, sid, did, dtype
+  integer(HID_T)  :: dtype
   integer(HSIZE_T) :: dims(rank(value))
 
 
@@ -474,27 +460,16 @@ subroutine hdf_add_real32_3d(self,dname,value,attr,attrval)
 
   call self%add(dname)
 
-  if (self%comp_lvl < 1) then
-    call h5ltmake_dataset_f(self%lid, dname, &
-      rank(value), int(shape(value),HSIZE_T), h5kind_to_type(kind(value),H5_REAL_KIND), value, ierr)
-    if (ierr /= 0) error stop 'error on dataset '//dname//' write '//self%filename
-  else
-    pid = hdf_set_deflate(self, dims)
+  call hdf_setup_write(self,dname,dtype,dims)
+    
+  call h5dwrite_f(self%did, dtype, value, dims, ierr)
+  if (ierr /= 0) error stop 'error on dataset '//dname//' write '//self%filename
+  
+  call h5sclose_f(self%sid, ierr)
+  call h5pclose_f(self%pid, ierr)
+  call h5dclose_f(self%did, ierr)
+  if (ierr /= 0) error stop 'error on closing dataset '//dname//' write '//self%filename
 
-    call h5screate_simple_f(rank(value), dims, sid, ierr)
-    if (ierr /= 0) error stop 'error on dataspace '//dname//' '//self%filename
-    
-    call h5dcreate_f(self%lid, dname, dtype, sid, did, ierr, pid)
-    if (ierr /= 0) error stop 'error on dataset '//dname//' '//self%filename
-    
-    call h5dwrite_f(did, dtype, value, dims, ierr)
-    if (ierr /= 0) error stop 'error on dataset '//dname//' write '//self%filename
-    
-    call h5sclose_f(sid, ierr)
-    call h5pclose_f(pid, ierr)
-    call h5dclose_f(did, ierr)
-    if (ierr /= 0) error stop 'error on closing dataset '//dname//' write '//self%filename
-  endif
   
   if (present(attr)) call h5ltset_attribute_string_f(self%lid, dname, attr, attrval, ierr)
   if (ierr /= 0) error stop 'problem writing attribute '//attr//' to '//dname//' file '//self%filename
