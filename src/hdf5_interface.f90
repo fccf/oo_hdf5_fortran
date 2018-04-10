@@ -220,6 +220,8 @@ subroutine hdf_setup_write(self, dname, dtype, dims)
   
   integer :: ierr
   
+  call self%add(dname)
+  
   call hdf_set_deflate(self, dims)
 
   call h5screate_simple_f(size(dims), dims, self%sid, ierr)
@@ -281,7 +283,8 @@ subroutine hdf_add_int(self,dname,value,attr,attrval)
   if (ierr /= 0) error stop 'problem writing attribute '//attr//' to '//dname//' file '//self%filename
   
 end subroutine hdf_add_int
-!=============================================================================
+
+
 subroutine hdf_add_int1d(self,dname,value,attr,attrval)
   class(hdf5_file), intent(in) :: self
   character(*), intent(in) :: dname
@@ -300,7 +303,8 @@ subroutine hdf_add_int1d(self,dname,value,attr,attrval)
   if (ierr /= 0) error stop 'problem writing attribute '//attr//' to '//dname//' file '//self%filename
 
 end subroutine hdf_add_int1d
-!=============================================================================
+
+
 subroutine hdf_add_int2d(self,dname,value,attr,attrval)
   class(hdf5_file), intent(inout) :: self
   character(*), intent(in) :: dname
@@ -315,8 +319,6 @@ subroutine hdf_add_int2d(self,dname,value,attr,attrval)
   dims = shape(value)
   dtype = h5kind_to_type(kind(value),H5_INTEGER_KIND)
 
-  call self%add(dname)
-
   call hdf_setup_write(self,dname,dtype,dims)
     
   call h5dwrite_f(self%did, dtype, value, dims, ierr)
@@ -328,7 +330,8 @@ subroutine hdf_add_int2d(self,dname,value,attr,attrval)
   if (ierr /= 0) error stop 'problem writing attribute '//attr//' to '//dname//' file '//self%filename
 
 end subroutine hdf_add_int2d
-!=============================================================================
+
+
 subroutine hdf_add_int3d(self,dname,value,attr,attrval)
   class(hdf5_file), intent(inout) :: self
   character(*), intent(in) :: dname
@@ -342,8 +345,6 @@ subroutine hdf_add_int3d(self,dname,value,attr,attrval)
 
   dims = shape(value)
   dtype = h5kind_to_type(kind(value),H5_INTEGER_KIND)
-
-  call self%add(dname)
 
   call hdf_setup_write(self,dname,dtype,dims)
     
@@ -433,8 +434,6 @@ subroutine hdf_add_real32_2d(self,dname,value,attr,attrval)
   dims = shape(value)
   dtype = h5kind_to_type(kind(value),H5_REAL_KIND)
 
-  call self%add(dname)
-
   call hdf_setup_write(self,dname,dtype,dims)
   
   call h5dwrite_f(self%did, dtype, value, dims, ierr)
@@ -462,8 +461,6 @@ subroutine hdf_add_real32_3d(self,dname,value,attr,attrval)
 
   dims = shape(value)
   dtype = h5kind_to_type(kind(value),H5_REAL_KIND)
-
-  call self%add(dname)
 
   call hdf_setup_write(self,dname,dtype,dims)
     
